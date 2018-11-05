@@ -396,6 +396,54 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	return status.FH.FH, nil
 }
 
+func (v *Target) GetAttr(path string) (*Fattr, []byte, error) {
+	_, fh, err := v.Lookup(path)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fattr, err := v.GetAttrFh(fh)
+
+	util.Debugf("getattr(%s): FH 0x%x, attr: %+v", path, fh, fattr)
+	return fattr, fh, err
+}
+
+func (v *Target) GetAttrFh(fh []byte) (*Fattr, error) {
+	type GetAttrArgs struct {
+		rpc.Header
+		FH []byte
+	}
+
+	type GetAttrOk struct {
+		Attr Fattr
+	}
+
+	res, err := v.call(&GetAttrArgs{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3GetAttr,
+			Cred:    v.auth,
+			Verf:    rpc.AuthNull,
+		},
+		FH: fh,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	getAttrRes := new(GetAttrOk)
+	if err := xdr.Read(res, getAttrRes); err != nil {
+		util.Debugf("getattr partial decode: %+v", *getAttrRes)
+		util.Debugf("getattr raw res: %+v", res)
+		return nil, err
+	}
+
+	return &getAttrRes.Attr, nil
+}
+
 // Remove a file
 func (v *Target) Remove(path string) error {
 	parentDir, deleteFile := filepath.Split(path)

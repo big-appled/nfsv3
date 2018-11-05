@@ -21,6 +21,7 @@ const (
 	Nfs3Vers = 3
 
 	// program methods
+	NFSProc3GetAttr     = 1
 	NFSProc3Lookup      = 3
 	NFSProc3Read        = 6
 	NFSProc3Write       = 7
