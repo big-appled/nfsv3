@@ -256,7 +256,7 @@ func dialService(addr string, port int) (*rpc.Client, error) {
 		var p int
 		for {
 			p = r1.Intn(1024)
-			if p < 0 {
+			if p < 1 {
 				continue
 			}
 
