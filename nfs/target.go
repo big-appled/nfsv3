@@ -183,10 +183,10 @@ func (v *Target) ReadDirPlus(dir string) ([]*EntryPlus, error) {
 		return nil, err
 	}
 
-	return v.readDirPlus(fh)
+	return v.ReadDirPlusByFh(fh)
 }
 
-func (v *Target) readDirPlus(fh []byte) ([]*EntryPlus, error) {
+func (v *Target) ReadDirPlusByFh(fh []byte) ([]*EntryPlus, error) {
 	cookie := uint64(0)
 	cookieVerf := uint64(0)
 	eof := false
@@ -522,7 +522,7 @@ func (v *Target) removeAll(deleteDirfh []byte) error {
 	// all files.
 
 	// This is a directory, get all of its Entries
-	entries, err := v.readDirPlus(deleteDirfh)
+	entries, err := v.ReadDirPlusByFh(deleteDirfh)
 	if err != nil {
 		return err
 	}
