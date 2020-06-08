@@ -558,3 +558,86 @@ func (v *Target) removeAll(deleteDirfh []byte) error {
 
 	return nil
 }
+
+func (v *Target) GetAttrByFh(fh []byte) (*Fattr, error) {
+	type GetAttr3Args struct {
+		rpc.Header
+		FH []byte
+	}
+
+	type GetAttr3ResOk struct {
+		Attr Fattr
+	}
+
+	res, err := v.call(&GetAttr3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3GetAttr,
+			Cred:    v.auth,
+			Verf:    rpc.AuthNull,
+		},
+		FH: fh,
+	})
+
+	if err != nil {
+		util.Debugf("getattr: %s", err.Error())
+		return nil, err
+	}
+
+	fattr := new(Fattr)
+	if err = xdr.Read(res, fattr); err != nil {
+		return nil, err
+	}
+
+	return fattr, nil
+}
+
+type Guard struct {
+	// 0 : FALSE
+	// 1 : TRUE if the server is to verify that guard.obj_ctime matches the ctime for the object
+	Check bool     `xdr:"union"`
+	Ctime NFS3Time `xdr:"unioncase=1"`
+}
+
+func (v *Target) SetAttrByFh(fh []byte, fattr Sattr3) error {
+	type SetAttr3Args struct {
+		rpc.Header
+		FH    []byte
+		Fattr Sattr3
+		Guard Guard
+	}
+
+	type SetAttr3ResOk struct {
+		WccData WccData
+	}
+
+	res, err := v.call(&SetAttr3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3SetAttr,
+			Cred:    v.auth,
+			Verf:    rpc.AuthNull,
+		},
+		FH:    fh,
+		Fattr: fattr,
+		Guard: Guard{
+			Check: false,
+		},
+	})
+
+	if err != nil {
+		util.Debugf("setattr: %s", err.Error())
+		return err
+	}
+
+	wccData := new(WccData)
+	if err = xdr.Read(res, wccData); err != nil {
+		return err
+	}
+
+	return nil
+}
