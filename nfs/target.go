@@ -273,7 +273,6 @@ func (v *Target) ReadDirPlusByFh(fh []byte) ([]*EntryPlus, error) {
 	return entries, nil
 }
 
-// Creates a directory of the given name and returns its handle
 func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 	dir, newDir := filepath.Split(path)
 	_, fh, err := v.Lookup(dir)
@@ -281,6 +280,11 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
+	return v.MkdirByParentFh(fh, newDir, param)
+}
+
+// Creates a directory of the given name and returns its handle
+func (v *Target) MkdirByParentFh(fh []byte, name string, perm os.FileMode) ([]byte, error) {
 	type MkdirArgs struct {
 		rpc.Header
 		Where Diropargs3
@@ -304,7 +308,7 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		},
 		Where: Diropargs3{
 			FH:       fh,
-			Filename: newDir,
+			Filename: name,
 		},
 		Attrs: Sattr3{
 			Mode: SetMode{
@@ -316,23 +320,17 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 	res, err := v.call(args)
 
 	if err != nil {
-		util.Debugf("mkdir(%s): %s", path, err.Error())
-		util.Debugf("mkdir args (%+v)", args)
 		return nil, err
 	}
 
 	mkdirres := new(MkdirOk)
 	if err := xdr.Read(res, mkdirres); err != nil {
-		util.Errorf("mkdir(%s) failed to parse return: %s", path, err)
-		util.Debugf("mkdir(%s) partial response: %+v", mkdirres)
 		return nil, err
 	}
 
-	util.Debugf("mkdir(%s): created successfully (0x%x)", path, fh)
 	return mkdirres.FH.FH, nil
 }
 
-// Create a file with name the given mode
 func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	dir, newFile := filepath.Split(path)
 	_, fh, err := v.Lookup(dir)
@@ -340,6 +338,11 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
+	return v.CreateByFh(fh, newFile, perm)
+}
+
+// Create a file with name the given mode
+func (v *Target) CreateByFh(fh []byte, name string, perm os.FileMode) ([]byte, error) {
 	type How struct {
 		// 0 : UNCHECKED (default)
 		// 1 : GUARDED
@@ -370,7 +373,7 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 		},
 		Where: Diropargs3{
 			FH:       fh,
-			Filename: newFile,
+			Filename: name,
 		},
 		HW: How{
 			Attr: Sattr3{
@@ -383,7 +386,6 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	})
 
 	if err != nil {
-		util.Debugf("create(%s): %s", path, err.Error())
 		return nil, err
 	}
 
@@ -392,7 +394,6 @@ func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
-	util.Debugf("create(%s): created successfully", path)
 	return status.FH.FH, nil
 }
 
