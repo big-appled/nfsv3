@@ -280,7 +280,7 @@ func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
 		return nil, err
 	}
 
-	return v.MkdirByParentFh(fh, newDir, param)
+	return v.MkdirByParentFh(fh, newDir, perm)
 }
 
 // Creates a directory of the given name and returns its handle
