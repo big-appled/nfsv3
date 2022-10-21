@@ -18,6 +18,10 @@ Provisionally, we will continue to provide the code served under github.com/go-n
 
 As a side note, the above statement is not intended for us to combat with the big tech company. That's the rendering of gratitudes to the original author and the contributors, let alone the company (and its employees) which kept the code viable to date.
 
+## Original author
+
+Dave Cheney ([@davecheney](https://github.com/davecheney) at GitHub)
+
 ## Contributors
 
 - Matthew Hiles ([@sparques](https://github.com/sparques) at GitHub)
