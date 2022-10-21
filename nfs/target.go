@@ -320,14 +320,19 @@ func (v *Target) MkdirByParentFh(fh []byte, name string, perm os.FileMode) ([]by
 	res, err := v.call(args)
 
 	if err != nil {
+		util.Debugf("mkdir(%s): %s", path, err.Error())
+		util.Debugf("mkdir args (%+v)", args)
 		return nil, err
 	}
 
 	mkdirres := new(MkdirOk)
 	if err := xdr.Read(res, mkdirres); err != nil {
+		util.Errorf("mkdir(%s) failed to parse return: %s", path, err)
+		util.Debugf("mkdir(%s) partial response: %+v", mkdirres)
 		return nil, err
 	}
 
+	util.Debugf("mkdir(%s): created successfully (0x%x)", path, fh)
 	return mkdirres.FH.FH, nil
 }
 
@@ -394,6 +399,7 @@ func (v *Target) CreateByFh(fh []byte, name string, perm os.FileMode) ([]byte, e
 		return nil, err
 	}
 
+	util.Debugf("create(%s): created successfully", path)
 	return status.FH.FH, nil
 }
 
