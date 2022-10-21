@@ -8,12 +8,11 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"os/user"
 	"syscall"
 	"time"
 
-	"github.com/joshuarobinson/go-nfs-client/nfs/rpc"
-	"github.com/joshuarobinson/go-nfs-client/nfs/util"
+	"github.com/go-nfs/nfsv3/nfs/rpc"
+	"github.com/go-nfs/nfsv3/nfs/util"
 )
 
 const (
@@ -247,13 +246,10 @@ func dialService(addr string, port int, priv bool) (*rpc.Client, error) {
 	var (
 		ldr    *net.TCPAddr
 		client *rpc.Client
+		err    error
 	)
 
-	usr, err := user.Current()
-
-	// Unless explicitly configured, the target will likely reject connections
-	// from non-privileged ports.
-	if err == nil && usr.Uid == "0" && priv {
+	if priv {
 		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		var p int

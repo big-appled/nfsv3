@@ -41,13 +41,13 @@ func TestDialService(t *testing.T) {
 	}
 	defer listener.Close()
 
-	_, err = dialService("127.0.0.1", 6666)
+	_, err = dialService("127.0.0.1", 6666, false)
 	if err != nil {
 		t.Logf("error dialing: %s", err.Error())
 		t.FailNow()
 	}
 
-	_, err = dialService("127.0.0.1", 6666)
+	_, err = dialService("127.0.0.1", 6666, false)
 	if err != nil {
 		t.Logf("error dialing: %s", err.Error())
 		t.FailNow()

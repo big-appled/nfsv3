@@ -7,11 +7,11 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
+	_path "path"
 
-	"github.com/joshuarobinson/go-nfs-client/nfs/rpc"
-	"github.com/joshuarobinson/go-nfs-client/nfs/util"
-	"github.com/joshuarobinson/go-nfs-client/nfs/xdr"
+	"github.com/go-nfs/nfsv3/nfs/rpc"
+	"github.com/go-nfs/nfsv3/nfs/util"
+	"github.com/go-nfs/nfsv3/nfs/xdr"
 )
 
 // File wraps the NfsProc3Read and NfsProc3Write methods to implement a
@@ -21,7 +21,7 @@ type File struct {
 
 	// current position
 	curr   uint64
-	size   int64
+	fattr  *Fattr
 	fsinfo *FSInfo
 
 	// filehandle to the file
@@ -240,7 +240,8 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f.curr = uint64(int64(f.curr) + offset)
 		return int64(f.curr), nil
 	case io.SeekEnd:
-		return f.size, nil
+		f.curr = f.fattr.Filesize
+		return int64(f.curr), nil
 	default:
 		// This indicates serious programming error
 		return int64(f.curr), errors.New("Invalid whence")
@@ -272,20 +273,27 @@ func (v *Target) OpenFile(path string, perm os.FileMode) (*File, error) {
 
 // Open opens a file for reading
 func (v *Target) Open(path string) (*File, error) {
-	info, fh, err := v.Lookup(path)
+	fattr, fh, err := v.lookupInner(v.fh, path)
 	if err != nil {
 		return nil, err
 	}
 
-	return v.OpenByFh(fh)
-}
-
-// OpenByFh opens a file using file handle instead of path
-func (v *Target) OpenByFh(fh []byte) (*File, error) {
 	f := &File{
 		Target: v,
 		fsinfo: v.fsinfo,
-		size:   info.Size(),
+		fattr:  fattr,
+		fh:     fh,
+	}
+
+	return f, nil
+}
+
+// OpenByFh opens a file using file handle instead of path
+func (v *Target) OpenByFh(fh []byte, fattr *Fattr) (*File, error) {
+	f := &File{
+		Target: v,
+		fsinfo: v.fsinfo,
+		fattr:  fattr,
 		fh:     fh,
 	}
 
@@ -311,8 +319,8 @@ func (v *Target) Symlink(where, symlink string) (*File, error) {
 		Wcc     WccData
 	}
 
-	symlinkName := filepath.Base(where)
-	symlinkDir := filepath.Dir(where)
+	symlinkName := _path.Base(where)
+	symlinkDir := _path.Dir(where)
 
 	_, fh, err := v.Lookup(symlinkDir)
 	if err != nil {

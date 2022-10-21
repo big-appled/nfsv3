@@ -6,13 +6,12 @@ package nfs
 import (
 	"io"
 	"os"
-	"path"
-	"path/filepath"
+	_path "path"
 	"strings"
 
-	"github.com/joshuarobinson/go-nfs-client/nfs/rpc"
-	"github.com/joshuarobinson/go-nfs-client/nfs/util"
-	"github.com/joshuarobinson/go-nfs-client/nfs/xdr"
+	"github.com/go-nfs/nfsv3/nfs/rpc"
+	"github.com/go-nfs/nfsv3/nfs/util"
+	"github.com/go-nfs/nfsv3/nfs/xdr"
 )
 
 type Target struct {
@@ -107,14 +106,17 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 
 // Lookup returns attributes and the file handle to a given dirent
 func (v *Target) Lookup(p string) (os.FileInfo, []byte, error) {
+	return v.lookupInner(v.fh, p)
+}
+
+func (v *Target) lookupInner(fh []byte, p string) (*Fattr, []byte, error) {
 	var (
 		err   error
 		fattr *Fattr
-		fh    = v.fh
 	)
 
 	// desecend down a path heirarchy to get the last elem's fh
-	dirents := strings.Split(path.Clean(p), "/")
+	dirents := strings.Split(_path.Clean(p), "/")
 	for _, dirent := range dirents {
 		// we're assuming the root is always the root of the mount
 		if dirent == "." || dirent == "" {
@@ -274,7 +276,7 @@ func (v *Target) ReadDirPlusByFh(fh []byte) ([]*EntryPlus, error) {
 }
 
 func (v *Target) Mkdir(path string, perm os.FileMode) ([]byte, error) {
-	dir, newDir := filepath.Split(path)
+	dir, newDir := _path.Split(path)
 	_, fh, err := v.Lookup(dir)
 	if err != nil {
 		return nil, err
@@ -320,24 +322,24 @@ func (v *Target) MkdirByParentFh(fh []byte, name string, perm os.FileMode) ([]by
 	res, err := v.call(args)
 
 	if err != nil {
-		util.Debugf("mkdir(%s): %s", path, err.Error())
+		util.Debugf("mkdir(%+v %s): %s", fh, name, err.Error())
 		util.Debugf("mkdir args (%+v)", args)
 		return nil, err
 	}
 
 	mkdirres := new(MkdirOk)
 	if err := xdr.Read(res, mkdirres); err != nil {
-		util.Errorf("mkdir(%s) failed to parse return: %s", path, err)
+		util.Errorf("mkdir(%+v %s) failed to parse return: %s", fh, name, err)
 		util.Debugf("mkdir(%s) partial response: %+v", mkdirres)
 		return nil, err
 	}
 
-	util.Debugf("mkdir(%s): created successfully (0x%x)", path, fh)
+	util.Debugf("mkdir(%+v %s): created successfully: %+v", fh, name, mkdirres.FH.FH)
 	return mkdirres.FH.FH, nil
 }
 
 func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
-	dir, newFile := filepath.Split(path)
+	dir, newFile := _path.Split(path)
 	_, fh, err := v.Lookup(dir)
 	if err != nil {
 		return nil, err
@@ -399,13 +401,13 @@ func (v *Target) CreateByFh(fh []byte, name string, perm os.FileMode) ([]byte, e
 		return nil, err
 	}
 
-	util.Debugf("create(%s): created successfully", path)
+	util.Debugf("create(%+v %s): created successfully", fh, name)
 	return status.FH.FH, nil
 }
 
 // Remove a file
 func (v *Target) Remove(path string) error {
-	parentDir, deleteFile := filepath.Split(path)
+	parentDir, deleteFile := _path.Split(path)
 	_, fh, err := v.Lookup(parentDir)
 	if err != nil {
 		return err
@@ -446,7 +448,7 @@ func (v *Target) remove(fh []byte, deleteFile string) error {
 
 // RmDir removes a non-empty directory
 func (v *Target) RmDir(path string) error {
-	dir, deletedir := filepath.Split(path)
+	dir, deletedir := _path.Split(path)
 	_, fh, err := v.Lookup(dir)
 	if err != nil {
 		return err
@@ -487,7 +489,7 @@ func (v *Target) rmDir(fh []byte, name string) error {
 }
 
 func (v *Target) RemoveAll(path string) error {
-	parentDir, deleteDir := filepath.Split(path)
+	parentDir, deleteDir := _path.Split(path)
 	_, parentDirfh, err := v.Lookup(parentDir)
 	if err != nil {
 		return err
