@@ -23,6 +23,10 @@ As a side note, the above statement is not intended for us to combat with the bi
 - Matthew Hiles ([@sparques](https://github.com/sparques) at GitHub)
 - Călin Sălăgean ([@dooma](https://github.com/dooma) at GitHub)
 - Joshua Robinson ([@joshuarobinson](https://github.com/joshuarobinson) at GitHub)
+- Roman Strashkin ([@Ramzec](https://github.com/Ramzec) at GitHub)
+- Ilya Bakulin ([@kibab](https://github.com/kibab) at GitHub)
+- Jeff Zhuo ([@mingforpc](https://github.com/mingforpc) at GitHub)
+-:
 
 ## Contributors likely affiliated by VMware, Inc.
 
