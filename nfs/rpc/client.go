@@ -33,6 +33,7 @@ const (
 
 const (
 	RpcMismatch = iota
+	RpcAuthError
 )
 
 var xid uint32
@@ -166,9 +167,11 @@ retry:
 		rejectStatus, _ := xdr.ReadUint32(res)
 		switch rejectStatus {
 		case RpcMismatch:
-
+			return nil, fmt.Errorf("rejectedStatus RPC Mismatch: %+v", call)
+		case RpcAuthError:
+			return nil, fmt.Errorf("rejectedStatus RPC Auth Error: %+v", call)
 		default:
-			return nil, fmt.Errorf("rejectedStatus was not valid: %d", rejectStatus)
+			return nil, fmt.Errorf("rejectedStatus was not valid: %d: %+v", rejectStatus, call)
 		}
 
 	default:
