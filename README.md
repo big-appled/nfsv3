@@ -12,7 +12,7 @@ Original comment in the fork starts here:
 
 ## ⚠️Copyright and license⚠️　
 
-This can be a complex problem; the very original is put in the public domain as stated in the above comment, the VMware's fork states that the copyright belongs to VMware, Inc., and pieces of code that only exist in this repository were written by the contributors who VMware doesn't affiliate.
+This can be a complex problem; the very original is put in the public domain as stated in the above comment, the VMware's fork states that the copyright belongs to VMware, Inc., and almost all the pieces of code that exist in this repository but in the VMware's were written by the contributors who VMware doesn't affiliate.
 
 Provisionally, we will continue to provide the code served under github.com/go-nfs/nfsv3 (call it Code hereafter) by 2-clause BSD license with the copyright notice intact.  However, this doesn't mean that VMware, Inc., is the sole copyright holder of Code and can gain full control over licensing of Code. This is because the contributors didn't seem to have signed CLA or any agreement akin. If you need to be sure about the licensing, please stick with the original.
 
