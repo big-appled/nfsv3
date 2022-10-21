@@ -34,4 +34,4 @@ As a side note, the above statement is not intended for us to combat with the bi
 
 ## Contributors likely affiliated by VMware, Inc.
 
-- George Hicken ([@hickeng}(https://github.com/hickeng) at GitHub)
+- George Hicken ([@hickeng](https://github.com/hickeng) at GitHub)
