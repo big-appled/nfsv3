@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	_path "path"
 
 	"github.com/go-nfs/nfsv3/nfs/rpc"
 	"github.com/go-nfs/nfsv3/nfs/util"
@@ -275,7 +274,7 @@ func (v *Target) OpenFile(path string, perm os.FileMode) (*File, error) {
 
 // Open opens a file for reading
 func (v *Target) Open(path string) (*File, error) {
-	fattr, fh, err := v.lookupInner(v.fh, path)
+	fattr, fh, _, _, err := v.lookupInner(v.fh, path, true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -321,10 +320,7 @@ func (v *Target) Symlink(where, symlink string) (*File, error) {
 		Wcc     WccData
 	}
 
-	symlinkName := _path.Base(where)
-	symlinkDir := _path.Dir(where)
-
-	_, fh, err := v.Lookup(symlinkDir)
+	_, _, symlinkName, fh, err := v.lookupInner(v.fh, symlink, false, nil)
 	if err != nil {
 		return nil, err
 	}
