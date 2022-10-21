@@ -16,7 +16,7 @@ This can be a complex problem; the very original is put in the public domain as 
 
 Provisionally, we will continue to provide the code served under github.com/go-nfs/nfsv3 (call it Code hereafter) by 2-clause BSD license with the copyright notice intact.  However, this doesn't mean that VMware, Inc., is the sole copyright holder of Code and can gain full control over licensing of Code. This is because the contributors didn't seem to have signed CLA or any agreement akin. If you need to be sure about the licensing, please stick with the original.
 
-As a side note, the above statement is not intended for us to combat with the big tech company. That's the rendering of gratitudes to the original author and the contributors, let alone the company (and its employee) which kept the code viable to date.
+As a side note, the above statement is not intended for us to combat with the big tech company. That's the rendering of gratitudes to the original author and the contributors, let alone the company (and its employees) which kept the code viable to date.
 
 ## Contributors
 
