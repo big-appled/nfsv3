@@ -37,6 +37,7 @@ type Mount struct {
 	auth    rpc.Auth
 	dirPath string
 	Addr    string
+	priv    bool
 }
 
 func (m *Mount) Unmount() error {
@@ -67,7 +68,7 @@ func (m *Mount) Unmount() error {
 }
 
 // Mount creates a mount to a filesystem, with a priv flag to use local (un)privileged ports
-func (m *Mount) Mount(dirpath string, auth rpc.Auth, priv bool) (*Target, error) {
+func (m *Mount) Mount(dirpath string, auth rpc.Auth) (*Target, error) {
 	type mount struct {
 		rpc.Header
 		Dirpath string
@@ -105,9 +106,17 @@ func (m *Mount) Mount(dirpath string, auth rpc.Auth, priv bool) (*Target, error)
 		m.dirPath = dirpath
 		m.auth = auth
 
-		vol, err := NewTarget(m.Addr, auth, fh, dirpath, priv)
-		if err != nil {
-			return nil, err
+		var vol *Target
+		if m.Addr != "" {
+			vol, err = NewTarget(m.Addr, auth, fh, dirpath, m.priv)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			vol, err = NewTargetWithClient(m.Client, auth, fh, dirpath)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		return vol, nil
@@ -145,5 +154,6 @@ func DialMount(addr string, priv bool) (*Mount, error) {
 	return &Mount{
 		Client: client,
 		Addr:   addr,
+		priv:   priv,
 	}, nil
 }

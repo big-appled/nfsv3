@@ -41,7 +41,7 @@ func main() {
 
 	auth := rpc.NewAuthUnix("hasselhoff", 1001, 1001)
 
-	v, err := mount.Mount(target, auth.Auth(), false)
+	v, err := mount.Mount(target, auth.Auth())
 	if err != nil {
 		log.Fatalf("unable to mount volume: %v", err)
 	}

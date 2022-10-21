@@ -26,7 +26,8 @@ As a side note, the above statement is not intended for us to combat with the bi
 - Roman Strashkin ([@Ramzec](https://github.com/Ramzec) at GitHub)
 - Ilya Bakulin ([@kibab](https://github.com/kibab) at GitHub)
 - Jeff Zhuo ([@mingforpc](https://github.com/mingforpc) at GitHub)
--:
+- deusnefum ([@deusnefum](https://github.com/deusnefum) at GitHub)
+- Will Scott ([@willscott](https://github.com/willscott) at GitHub)
 
 ## Contributors likely affiliated by VMware, Inc.
 
