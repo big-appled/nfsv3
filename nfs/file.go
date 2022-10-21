@@ -240,7 +240,9 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f.curr = uint64(int64(f.curr) + offset)
 		return int64(f.curr), nil
 	case io.SeekEnd:
-		f.curr = f.fattr.Filesize
+		if f.curr < f.fattr.Filesize {
+			f.curr = f.fattr.Filesize
+		}
 		return int64(f.curr), nil
 	default:
 		// This indicates serious programming error
