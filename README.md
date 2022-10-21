@@ -1,4 +1,4 @@
-# NFS Client for Golang
+# NFSv3 Client for Golang
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-nfs/nfsv3.svg)](https://pkg.go.dev/github.com/go-nfs/nfsv3)
 
