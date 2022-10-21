@@ -338,6 +338,75 @@ func (v *Target) MkdirByParentFh(fh []byte, name string, perm os.FileMode) ([]by
 	return mkdirres.FH.FH, nil
 }
 
+// Create a file with name the given mode
+func (v *Target) CreateTruncate(path string, perm os.FileMode, size uint64) ([]byte, error) {
+	dir, newFile := _path.Split(path)
+	_, fh, err := v.Lookup(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	type How struct {
+		// 0 : UNCHECKED (default)
+		// 1 : GUARDED
+		// 2 : EXCLUSIVE
+		Mode uint32
+		Attr Sattr3
+	}
+	type Create3Args struct {
+		rpc.Header
+		Where Diropargs3
+		HW    How
+	}
+
+	type Create3Res struct {
+		FH     PostOpFH3
+		Attr   PostOpAttr
+		DirWcc WccData
+	}
+
+	res, err := v.call(&Create3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Create,
+			Cred:    v.auth,
+			Verf:    rpc.AuthNull,
+		},
+		Where: Diropargs3{
+			FH:       fh,
+			Filename: newFile,
+		},
+		HW: How{
+			Attr: Sattr3{
+				Mode: SetMode{
+					SetIt: true,
+					Mode:  uint32(perm.Perm()),
+				},
+				Size: SetSize{
+					SetIt: true,
+					Size:  size,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		util.Debugf("create(%s): %s", path, err.Error())
+		return nil, err
+	}
+
+	status := new(Create3Res)
+	if err = xdr.Read(res, status); err != nil {
+		return nil, err
+	}
+
+	util.Debugf("create(%s): created successfully", path)
+	return status.FH.FH, nil
+}
+
+// Create a file with name the given mode
 func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
 	dir, newFile := _path.Split(path)
 	_, fh, err := v.Lookup(dir)

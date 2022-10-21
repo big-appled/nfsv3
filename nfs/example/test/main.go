@@ -33,7 +33,7 @@ func main() {
 
 	util.Infof("host=%s target=%s dir=%s\n", host, target, dir)
 
-	mount, err := nfs.DialMount(host)
+	mount, err := nfs.DialMount(host, false)
 	if err != nil {
 		log.Fatalf("unable to dial MOUNT service: %v", err)
 	}
@@ -41,7 +41,7 @@ func main() {
 
 	auth := rpc.NewAuthUnix("hasselhoff", 1001, 1001)
 
-	v, err := mount.Mount(target, auth.Auth())
+	v, err := mount.Mount(target, auth.Auth(), false)
 	if err != nil {
 		log.Fatalf("unable to mount volume: %v", err)
 	}
