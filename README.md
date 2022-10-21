@@ -28,6 +28,9 @@ As a side note, the above statement is not intended for us to combat with the bi
 - Jeff Zhuo ([@mingforpc](https://github.com/mingforpc) at GitHub)
 - deusnefum ([@deusnefum](https://github.com/deusnefum) at GitHub)
 - Will Scott ([@willscott](https://github.com/willscott) at GitHub)
+- Jayson Wang ([@wjiec](https://github.com/wjiec) at GitHub)
+- koalr ([@zema1](https://github.com/zema1) at GitHub)
+- Péter Sárközi ([@Xmister](https://github.com/Xmister) at GitHub)
 
 ## Contributors likely affiliated by VMware, Inc.
 
