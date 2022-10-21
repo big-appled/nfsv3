@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vmware/go-nfs-client/nfs/rpc"
-	"github.com/vmware/go-nfs-client/nfs/util"
+	"github.com/joshuarobinson/go-nfs-client/nfs/rpc"
+	"github.com/joshuarobinson/go-nfs-client/nfs/util"
 )
 
 const (
@@ -222,8 +222,7 @@ type FSInfo struct {
 	Properties uint32
 }
 
-// Dial an RPC svc after getting the port from the portmapper
-func DialService(addr string, prog rpc.Mapping) (*rpc.Client, error) {
+func DialService(addr string, prog rpc.Mapping, priv bool) (*rpc.Client, error) {
 	pm, err := rpc.DialPortmapper("tcp", addr)
 	if err != nil {
 		util.Errorf("Failed to connect to portmapper: %s", err)
@@ -236,7 +235,7 @@ func DialService(addr string, prog rpc.Mapping) (*rpc.Client, error) {
 		return nil, err
 	}
 
-	client, err := dialService(addr, port)
+	client, err := dialService(addr, port, priv)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +243,7 @@ func DialService(addr string, prog rpc.Mapping) (*rpc.Client, error) {
 	return client, nil
 }
 
-func dialService(addr string, port int) (*rpc.Client, error) {
+func dialService(addr string, port int, priv bool) (*rpc.Client, error) {
 	var (
 		ldr    *net.TCPAddr
 		client *rpc.Client
@@ -254,7 +253,7 @@ func dialService(addr string, port int) (*rpc.Client, error) {
 
 	// Unless explicitly configured, the target will likely reject connections
 	// from non-privileged ports.
-	if err == nil && usr.Uid == "0" {
+	if err == nil && usr.Uid == "0" && priv {
 		r1 := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 		var p int

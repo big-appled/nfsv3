@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vmware/go-nfs-client/nfs/rpc"
-	"github.com/vmware/go-nfs-client/nfs/util"
-	"github.com/vmware/go-nfs-client/nfs/xdr"
+	"github.com/joshuarobinson/go-nfs-client/nfs/rpc"
+	"github.com/joshuarobinson/go-nfs-client/nfs/util"
+	"github.com/joshuarobinson/go-nfs-client/nfs/xdr"
 )
 
 // File wraps the NfsProc3Read and NfsProc3Write methods to implement a
@@ -21,6 +21,7 @@ type File struct {
 
 	// current position
 	curr   uint64
+	size   int64
 	fsinfo *FSInfo
 
 	// filehandle to the file
@@ -228,8 +229,6 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// However, as we're working with the shared file system, the file
 	// size might even change between NFSPROC3_GETATTR call and
 	// Seek() call, so don't even try to validate it.
-	// The only disadvantage of not knowing the current file size is that
-	// we cannot do io.SeekEnd seeks.
 	switch whence {
 	case io.SeekStart:
 		if offset < 0 {
@@ -241,7 +240,7 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 		f.curr = uint64(int64(f.curr) + offset)
 		return int64(f.curr), nil
 	case io.SeekEnd:
-		return int64(f.curr), errors.New("SeekEnd is not supported yet")
+		return f.size, nil
 	default:
 		// This indicates serious programming error
 		return int64(f.curr), errors.New("Invalid whence")
@@ -273,7 +272,7 @@ func (v *Target) OpenFile(path string, perm os.FileMode) (*File, error) {
 
 // Open opens a file for reading
 func (v *Target) Open(path string) (*File, error) {
-	_, fh, err := v.Lookup(path)
+	info, fh, err := v.Lookup(path)
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +285,7 @@ func (v *Target) OpenByFh(fh []byte) (*File, error) {
 	f := &File{
 		Target: v,
 		fsinfo: v.fsinfo,
+		size:   info.Size(),
 		fh:     fh,
 	}
 
