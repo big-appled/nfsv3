@@ -135,6 +135,34 @@ func (v *Target) lookupInner(fh []byte, p string) (*Fattr, []byte, error) {
 	return fattr, fh, nil
 }
 
+// Lookup returns attributes and the file handle to a given dirent
+func (v *Target) lookup2(p string) (*Fattr, []byte, error) {
+	var (
+		err   error
+		fattr *Fattr
+		fh    = v.fh
+	)
+
+	// desecend down a path heirarchy to get the last elem's fh
+	dirents := strings.Split(_path.Clean(p), "/")
+	for _, dirent := range dirents {
+		// we're assuming the root is always the root of the mount
+		if dirent == "." || dirent == "" {
+			util.Debugf("root -> 0x%x", fh)
+			continue
+		}
+
+		fattr, fh, err = v.lookup(fh, dirent)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		//util.Debugf("%s -> 0x%x", dirent, fh)
+	}
+
+	return fattr, fh, nil
+}
+
 // lookup returns the same as above, but by fh and name
 func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 	type Lookup3Args struct {
@@ -179,6 +207,62 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 	return &lookupres.Attr.Attr, lookupres.FH, nil
 }
 
+// Access file
+func (v *Target) Access(path string, mode uint32) (uint32, error) {
+
+	_, fh, err := v.Lookup(path)
+	if err != nil {
+		return 0, err
+	}
+
+	_, mode, err = v.access(fh, path, mode)
+
+	return mode, err
+}
+
+// access returns the same as above, but by fh and name
+func (v *Target) access(fh []byte, path string, access uint32) (*Fattr, uint32, error) {
+	type Access3Args struct {
+		rpc.Header
+		FH     []byte
+		Access uint32
+	}
+
+	type AccessOk struct {
+		Attr   PostOpAttr
+		Access uint32
+	}
+
+	res, err := v.call(&Access3Args{Header: rpc.Header{
+		Rpcvers: 2,
+		Prog:    Nfs3Prog,
+		Vers:    Nfs3Vers,
+		Proc:    NFSProc3Access,
+		Cred:    v.auth,
+		Verf:    rpc.AuthNull,
+	},
+		FH:     fh,
+		Access: access})
+
+	if err != nil {
+		util.Debugf("access(%s): %s", path, err.Error())
+		return nil, 0, err
+	}
+
+	accessres := new(AccessOk)
+
+	if err := xdr.Read(res, accessres); err != nil {
+		util.Errorf("access(%s) failed to parse return: %s", path, err)
+		util.Debugf("access partial decode: %+v", *accessres)
+		return nil, 0, err
+	}
+
+	util.Debugf("access(%s): access %d, attr: %+v", path, accessres.Access, accessres.Attr)
+
+	return &accessres.Attr.Attr, accessres.Access, nil
+}
+
+// ReadDirPlus get dir sub item
 func (v *Target) ReadDirPlus(dir string) ([]*EntryPlus, error) {
 	_, fh, err := v.Lookup(dir)
 	if err != nil {
