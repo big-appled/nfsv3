@@ -35,6 +35,7 @@ Dave Cheney ([@davecheney](https://github.com/davecheney) at GitHub)
 - Jayson Wang ([@wjiec](https://github.com/wjiec) at GitHub)
 - koalr ([@zema1](https://github.com/zema1) at GitHub)
 - Péter Sárközi ([@Xmister](https://github.com/Xmister) at GitHub)
+- Moriyoshi Koizumi ([@moriyoshi](https://github.com/moriyoshi) at GitHub)
 
 ## Contributors likely affiliated by VMware, Inc.
 

@@ -4,6 +4,7 @@
 package nfs
 
 import (
+	"fmt"
 	"io"
 	"os"
 	_path "path"
@@ -108,67 +109,71 @@ func (v *Target) FSInfo() (*FSInfo, error) {
 	return fsinfo, nil
 }
 
+func sameHandle(a []byte, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, av := range a {
+		if b[i] != av {
+			return false
+		}
+	}
+	return true
+}
+
 // Lookup returns attributes and the file handle to a given dirent
 func (v *Target) Lookup(p string) (os.FileInfo, []byte, error) {
-	return v.lookupInner(v.fh, p)
+	fattr, fh, _, _, err := v.lookupInner(v.fh, p, true, nil)
+	return fattr, fh, err
 }
 
-func (v *Target) lookupInner(fh []byte, p string) (*Fattr, []byte, error) {
+func (v *Target) lookupInner(fh []byte, p string, lookupLast bool, lookupOrigin []byte) (*Fattr, []byte, string, []byte, error) {
 	var (
 		err   error
 		fattr *Fattr
 	)
 
 	// desecend down a path heirarchy to get the last elem's fh
-	dirents := strings.Split(_path.Clean(p), "/")
-	for _, dirent := range dirents {
+	dirents := strings.Split(p, "/")
+	var dirent string
+	var prevFh []byte
+	for i := 0; i < len(dirents); {
+		dirent = dirents[i]
+		prevFh = fh
+		i += 1
+		if i == len(dirents) && !lookupLast {
+			fattr = nil
+			fh = nil
+			break
+		}
 		// we're assuming the root is always the root of the mount
 		if dirent == "." || dirent == "" {
 			util.Debugf("root -> 0x%x", fh)
 			continue
 		}
-
-		fattr, fh, err = v.lookup(fh, dirent)
+		fattr, fh, _, err = v.lookup(prevFh, dirent)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, "", nil, err
 		}
-
-		//util.Debugf("%s -> 0x%x", dirent, fh)
+		if fattr.FileMode&0o170000 == 0o120000 {
+			if lookupOrigin != nil && sameHandle(fh, lookupOrigin) {
+				return nil, nil, "", nil, fmt.Errorf("recursed symlink")
+			}
+			// symlink
+			_, target, err := v.readlinkFh(fh)
+			if err != nil {
+				return nil, nil, "", nil, err
+			}
+			// reparse
+			_, fh, _, _, err = v.lookupInner(v.fh, target, true, fh)
+		}
 	}
 
-	return fattr, fh, nil
-}
-
-// Lookup returns attributes and the file handle to a given dirent
-func (v *Target) lookup2(p string) (*Fattr, []byte, error) {
-	var (
-		err   error
-		fattr *Fattr
-		fh    = v.fh
-	)
-
-	// desecend down a path heirarchy to get the last elem's fh
-	dirents := strings.Split(_path.Clean(p), "/")
-	for _, dirent := range dirents {
-		// we're assuming the root is always the root of the mount
-		if dirent == "." || dirent == "" {
-			util.Debugf("root -> 0x%x", fh)
-			continue
-		}
-
-		fattr, fh, err = v.lookup(fh, dirent)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		//util.Debugf("%s -> 0x%x", dirent, fh)
-	}
-
-	return fattr, fh, nil
+	return fattr, fh, dirent, prevFh, nil
 }
 
 // lookup returns the same as above, but by fh and name
-func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
+func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, *Fattr, error) {
 	type Lookup3Args struct {
 		rpc.Header
 		What Diropargs3
@@ -197,18 +202,18 @@ func (v *Target) lookup(fh []byte, name string) (*Fattr, []byte, error) {
 
 	if err != nil {
 		util.Debugf("lookup(%s): %s", name, err.Error())
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	lookupres := new(LookupOk)
 	if err := xdr.Read(res, lookupres); err != nil {
 		util.Errorf("lookup(%s) failed to parse return: %s", name, err)
 		util.Debugf("lookup partial decode: %+v", *lookupres)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	util.Debugf("lookup(%s): FH 0x%x, attr: %+v", name, lookupres.FH, lookupres.Attr.Attr)
-	return &lookupres.Attr.Attr, lookupres.FH, nil
+	return &lookupres.Attr.Attr, lookupres.FH, &lookupres.DirAttr.Attr, nil
 }
 
 // Access file
@@ -428,8 +433,7 @@ func (v *Target) MkdirByParentFh(fh []byte, name string, perm os.FileMode) ([]by
 
 // Create a file with name the given mode
 func (v *Target) CreateTruncate(path string, perm os.FileMode, size uint64) ([]byte, error) {
-	dir, newFile := _path.Split(path)
-	_, fh, err := v.Lookup(dir)
+	_, _, newFile, fh, err := v.lookupInner(v.fh, path, false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -496,8 +500,7 @@ func (v *Target) CreateTruncate(path string, perm os.FileMode, size uint64) ([]b
 
 // Create a file with name the given mode
 func (v *Target) Create(path string, perm os.FileMode) ([]byte, error) {
-	dir, newFile := _path.Split(path)
-	_, fh, err := v.Lookup(dir)
+	_, _, newFile, fh, err := v.lookupInner(v.fh, path, false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -694,8 +697,7 @@ func (v *Target) rmDir(fh []byte, name string) error {
 }
 
 func (v *Target) RemoveAll(path string) error {
-	parentDir, deleteDir := _path.Split(path)
-	_, parentDirfh, err := v.Lookup(parentDir)
+	_, _, deleteDir, parentDirfh, err := v.lookupInner(v.fh, path, false, nil)
 	if err != nil {
 		return err
 	}
@@ -712,7 +714,7 @@ func (v *Target) RemoveAll(path string) error {
 		return err
 	}
 
-	_, deleteDirfh, err := v.lookup(parentDirfh, deleteDir)
+	_, deleteDirfh, _, _, err := v.lookupInner(parentDirfh, deleteDir, true, nil)
 	if err != nil {
 		return err
 	}
@@ -853,4 +855,118 @@ func (v *Target) SetAttrByFh(fh []byte, fattr Sattr3) error {
 	}
 
 	return nil
+}
+
+func (v *Target) Rename(fromPath string, toPath string) error {
+	_, _, fromName, fromFh, err := v.lookupInner(v.fh, fromPath, true, nil)
+	if err != nil {
+		return err
+	}
+	if fromFh == nil {
+		return fmt.Errorf("fromName cannot be a root directory")
+	}
+	_, _, toName, toFh, err := v.lookupInner(v.fh, toPath, true, nil)
+	if err != nil {
+		return err
+	}
+	if toFh == nil {
+		return fmt.Errorf("toName cannot be a root directory")
+	}
+	return v.RenameByFh(fromFh, fromName, toFh, toName)
+}
+
+func (v *Target) RenameByFh(fromFh []byte, fromName string, toFh []byte, toName string) error {
+	type Rename3Args struct {
+		rpc.Header
+		From Diropargs3
+		To   Diropargs3
+	}
+
+	type Rename3Res struct {
+		FromDirWcc WccData
+		ToDirWcc   WccData
+	}
+
+	res, err := v.call(&Rename3Args{
+		Header: rpc.Header{
+			Rpcvers: 2,
+			Prog:    Nfs3Prog,
+			Vers:    Nfs3Vers,
+			Proc:    NFSProc3Rename,
+			Cred:    v.auth,
+			Verf:    rpc.AuthNull,
+		},
+		From: Diropargs3{
+			FH:       fromFh,
+			Filename: fromName,
+		},
+		To: Diropargs3{
+			FH:       toFh,
+			Filename: toName,
+		},
+	})
+
+	if err != nil {
+		util.Debugf("rename(%+v %s): %s", fromFh, fromName, err.Error())
+		return err
+	}
+
+	status := new(Rename3Res)
+	if err = xdr.Read(res, status); err != nil {
+		return err
+	}
+
+	util.Debugf("rename(%+v %s): successfully renamed to (%+v %s)", fromFh, fromName, toFh, toName)
+	return nil
+}
+
+// Readlink reads a symbolic link and returns the target
+func (v *Target) Readlink(path string) (string, error) {
+	_, fh, err := v.Lookup(path)
+	if err != nil {
+		return "", err
+	}
+
+	_, target, err := v.readlinkFh(fh)
+	return target, err
+}
+
+func (v *Target) readlinkFh(fh []byte) (*Fattr, string, error) {
+	type Readlink3Arg struct {
+		rpc.Header
+		FH []byte
+	}
+
+	type Readlink3Ok struct {
+		SymlinkAttr PostOpAttr
+		Target      string
+	}
+
+	res, err := v.call(
+		&Readlink3Arg{
+			Header: rpc.Header{
+				Rpcvers: 2,
+				Prog:    Nfs3Prog,
+				Vers:    Nfs3Vers,
+				Proc:    NFSProc3Readlink,
+				Cred:    v.auth,
+				Verf:    rpc.AuthNull,
+			},
+			FH: fh,
+		},
+	)
+
+	if err != nil {
+		util.Debugf("readlink(%+v): %s", fh, err.Error())
+		return nil, "", err
+	}
+
+	var readlinkRes Readlink3Ok
+	if err := xdr.Read(res, &readlinkRes); err != nil {
+		return nil, "", err
+	}
+
+	util.Debugf("readlink(%+v): attr: %+v, target: %s", fh, readlinkRes.SymlinkAttr.Attr, readlinkRes.Target)
+
+	return &readlinkRes.SymlinkAttr.Attr, readlinkRes.Target, nil
 }
