@@ -865,7 +865,7 @@ func (v *Target) Rename(fromPath string, toPath string) error {
 	if fromFh == nil {
 		return fmt.Errorf("fromName cannot be a root directory")
 	}
-	_, _, toName, toFh, err := v.lookupInner(v.fh, toPath, true, nil)
+	_, _, toName, toFh, err := v.lookupInner(v.fh, toPath, false, nil)
 	if err != nil {
 		return err
 	}
