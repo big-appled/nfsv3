@@ -278,6 +278,11 @@ func (v *Target) Open(path string) (*File, error) {
 		return nil, err
 	}
 
+	return v.OpenByFh(fh)
+}
+
+// OpenByFh opens a file using file handle instead of path
+func (v *Target) OpenByFh(fh []byte) (*File, error) {
 	f := &File{
 		Target: v,
 		fsinfo: v.fsinfo,
